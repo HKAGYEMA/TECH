@@ -72,7 +72,7 @@ resource "aws_ecs_task_definition" "app-td" {
   [
     {
       "name": "app",
-      "image": "381492019081.dkr.ecr.eu-west-2.amazonaws.com/lexus:${var.image_tag}",
+      "image": "339712838836.dkr.ecr.eu-west-2.amazonaws.com/kpmg:${var.image_tag}",
       "essential": true,
       "portMappings": [
         {

@@ -7,13 +7,13 @@ on:
 env:
   AWS_REGION: "eu-west-2"
   IMAGE_TAG: "latest"
-  ECR_REPOSITORY: "lexus"
+  ECR_REPOSITORY: "kpmg"
   TASK_DEFINITON: task-definition.json
   TASK_DEFINITION_FAMILY: "app-td"
   CONTAINER_NAME: "app"
   SERVICE: "app-ecs-service"
   CLUSTER: "app-cluster"
-  ECR_REGISTRY: "381492019081.dkr.ecr.eu-west-2.amazonaws.com"
+  ECR_REGISTRY: "339712838836.dkr.ecr.eu-west-2.amazonaws.com"
 
 permissions:
   id-token: write
