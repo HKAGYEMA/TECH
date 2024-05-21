@@ -5,7 +5,7 @@ RUN apt-get install apache2 -y
 RUN apt-get install apache2-utils -y
 RUN apt-get clean
 EXPOSE 80
-RUN echo "APP IS OFF" > /var/www/html/index.html
+RUN echo "TRIBAL APP IS HERE" > /var/www/html/index.html
 CMD apache2ctl -D FOREGROUND
 
 
