@@ -1,67 +1,83 @@
-
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
-
   name = "tf-vpc"
   cidr = "10.0.0.0/16"
-
-  azs             = ["eu-west-2a", "eu-west-2b"]
+  azs = ["eu-west-2a", "eu-west-2b"]
   private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
-  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24"]
-
+  public_subnets = ["10.0.101.0/24", "10.0.102.0/24"]
   enable_nat_gateway = true
-  enable_vpn_gateway = true
-
   tags = {
     Terraform = "true"
-    Environment = "dev"
+    Environment = "prod"
     Name = "tf-vpc"
   }
 }
 
-resource "aws_security_group" "lb-sg" {
-  name = "app-lb-sg"
+resource "aws_security_group" "lb_sg" {
+  name   = "lb-sg"
   vpc_id = module.vpc.vpc_id
+
   ingress {
-    from_port = 80
-    to_port = 80
-    protocol = "tcp"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   egress {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "ecs_sg" {
+  name   = "ecs-sg"
+  vpc_id = module.vpc.vpc_id
+
+  ingress {
+    from_port = 80
+    to_port   = 80
+    protocol  = "tcp"
+    security_groups = [aws_security_group.lb_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
 resource "aws_alb" "app-lb" {
-  name = "app-lb"
+  name               = "app-lb"
   load_balancer_type = "application"
-  subnets = module.vpc.public_subnets
-  security_groups = ["${aws_security_group.lb-sg.id}"]
+  subnets            = module.vpc.public_subnets
+  security_groups    = [aws_security_group.lb_sg.id]
 }
 
 resource "aws_lb_target_group" "app-tg" {
-  name = "app-tg"
-  port = 80
-  protocol = "HTTP"
+  name        = "app-tg"
+  port        = 80
+  protocol    = "HTTP"
   target_type = "ip"
-  vpc_id = module.vpc.vpc_id
+  vpc_id      = module.vpc.vpc_id
+
   health_check {
-    matcher = "200,301,302"
-    path = "/"
+    matcher = "200"
+    path    = "/health"
   }
 }
 
-
-resource "aws_lb_listener" "app-lb-l" {
-  port = 80
-  protocol = "HTTP"
+resource "aws_lb_listener" "app-lb-listener" {
   load_balancer_arn = aws_alb.app-lb.arn
+  port              = 80
+  protocol          = "HTTP"
+
   default_action {
-    type = "forward"
+    type             = "forward"
     target_group_arn = aws_lb_target_group.app-tg.arn
   }
 }
@@ -72,12 +88,12 @@ resource "aws_ecs_task_definition" "app-td" {
   [
     {
       "name": "app",
-      "image": "339712838836.dkr.ecr.eu-west-2.amazonaws.com/kpmg:${var.image_tag}",
+      "image": "339712838836.dkr.ecr.eu-west-2.amazonaws.com/trb:${var.image_tag}",
       "essential": true,
       "portMappings": [
         {
-          "containerPort" : 80,
-          "hostPort" : 80
+          "containerPort": 80,
+          "hostPort": 80
         }
       ],
       "memory": 512,
@@ -113,21 +129,21 @@ resource "aws_ecs_cluster" "app-ecs" {
 
 resource "aws_ecs_service" "app-ecs-service" {
   name            = "app-ecs-service"
-  launch_type     = "FARGATE"
-  desired_count   = 1
   cluster         = aws_ecs_cluster.app-ecs.id
   task_definition = aws_ecs_task_definition.app-td.arn
+  desired_count   = 2
+  launch_type     = "FARGATE"
 
   network_configuration {
-    subnets = module.vpc.public_subnets
-    security_groups  = ["${aws_security_group.lb-sg.id}"]
-    assign_public_ip = true
+    subnets          = module.vpc.private_subnets
+    security_groups  = [aws_security_group.ecs_sg.id]
+    assign_public_ip = false
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.app-tg.arn
-    container_port   = 80
     container_name   = "app"
+    container_port   = 80
   }
 }
 

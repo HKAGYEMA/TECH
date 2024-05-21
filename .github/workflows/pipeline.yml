@@ -7,7 +7,7 @@ on:
 env:
   AWS_REGION: "eu-west-2"
   IMAGE_TAG: "latest"
-  ECR_REPOSITORY: "kpmg"
+  ECR_REPOSITORY: "trb"
   TASK_DEFINITON: task-definition.json
   TASK_DEFINITION_FAMILY: "app-td"
   CONTAINER_NAME: "app"
@@ -50,7 +50,7 @@ jobs:
           echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
       
       - name: Apply terraform
-        run: terraform init && terraform destroy --auto-approve
+        run: terraform init && terraform apply --auto-approve
         working-directory: terraform
 
       - name: Export task definition
